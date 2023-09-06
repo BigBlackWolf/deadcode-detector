@@ -9,84 +9,16 @@
 - Does not cover cases, when executable is imported only
 """
 
-
-import ast
-import abc
-import csv
 import io
 import os
 import pathlib
 import re
 import typing
-from dataclasses import dataclass, field
 
 import click
 
-
-@dataclass(slots=True)
-class Attributes:
-    path: str = None
-    callable_list: typing.Optional[list[str]] = field(default_factory=list)
-    ignore_paths: typing.Optional[list[str]] = field(default_factory=list)
-    files: list[str] = field(default_factory=list)
-    found_callable_usage: typing.Optional[list[str]] = field(default_factory=list)
-    exclude_pattern: typing.Optional[list[str]] = field(default_factory=list)
-
-
-class CallableListParamType(click.ParamType):
-    name = "callable_list"
-    pattern = r"([a-zA-Z0-9\,\_\-])+"
-    regexp = re.compile(pattern)
-
-    def convert(
-        self,
-        value: str,
-        param: typing.Optional["Parameter"],
-        ctx: typing.Optional["Context"],
-    ) -> list[str]:
-        try:
-            if value != self.regexp.match(value).group(0):
-                raise AttributeError()
-            names = set(value.split(","))
-            if "" in names:
-                names.remove("")
-            if not names:
-                raise ValueError()
-            return list(names)
-        except AttributeError:
-            self.fail(f"Value {value!r} doesn't match pattern {self.pattern}", param, ctx)
-        except ValueError:
-            self.fail(f"Input is incorrect", param, ctx)
-
-
-class AbstractPipeline(abc.ABC):
-    @abc.abstractmethod
-    def process():
-        ...
-    
-    @abc.abstractmethod
-    def report():
-        ...
-
-    @abc.abstractmethod
-    def _collect_input():
-        ...
-
-    @abc.abstractmethod
-    def _collect_files():
-        ...
-
-    @abc.abstractclassmethod
-    def _search_executables():
-        ...
-
-    @abc.abstractmethod
-    def _collect_executable_names():
-        ...
-
-    @abc.abstractmethod
-    def _count_usages():
-        ...
+from abstract import AbstractPipeline
+from utils import Attributes, CallableListParamType
 
 
 class PythonPipeline(AbstractPipeline):
@@ -98,7 +30,7 @@ class PythonPipeline(AbstractPipeline):
         self._collect_executable_names()
         self._count_usages()
         self._save_results()
-    
+
     def report(self):
         result = len(set(self.context.callable_list) - set(self.context.found_callable_usage))
         print(f"Found {result} unused callable objects")
@@ -129,11 +61,10 @@ class PythonPipeline(AbstractPipeline):
             result = self._filter_files_by_ext(files, root)
             tree.extend(result)
         self.context.files = tree
-    
+
     @staticmethod
     def _filter_files_by_ext(files: list[str], root: str, extension: str = ".py") -> list[str]:
         return ["".join((root, "/", file)) for file in files if file.endswith(extension)]
-
 
     def _collect_executable_names(self):
         generate_pattern = "|".join([f"(([\s]+)?{keyword}\ )" for keyword in ("class", "def")])
@@ -143,7 +74,7 @@ class PythonPipeline(AbstractPipeline):
             with open(file_path, "r") as file:
                 executables = self._search_executables(file, search_pattern)
                 self.context.callable_list.extend(executables)
-    
+
     @staticmethod
     def _search_executables(file: io.TextIOWrapper, search_pattern: list[str]) -> list[str]:
         executables = []
