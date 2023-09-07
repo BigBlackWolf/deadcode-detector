@@ -17,12 +17,14 @@ import typing
 
 import click
 
-from abstract import AbstractPipeline
-from utils import Attributes, CallableListParamType
+from .abstract import AbstractPipeline
+from .utils import Attributes, CallableListParamType
 
 
 class PythonPipeline(AbstractPipeline):
-    context = Attributes()
+
+    def __init__(self):
+        self.context = Attributes()
 
     def process(self):
         self._collect_input()
@@ -67,8 +69,8 @@ class PythonPipeline(AbstractPipeline):
         return ["".join((root, "/", file)) for file in files if file.endswith(extension)]
 
     def _collect_executable_names(self):
-        generate_pattern = "|".join([f"(([\s]+)?{keyword}\ )" for keyword in ("class", "def")])
-        search_pattern = rf"^({generate_pattern})(.*?(?=\())"
+        generate_pattern = "|".join([fr"(([\s]+)?{keyword}\ )" for keyword in ("class", "def")])
+        search_pattern = fr"^({generate_pattern})(.*?(?=\())"
 
         for file_path in self.context.files:
             with open(file_path, "r") as file:
@@ -82,13 +84,13 @@ class PythonPipeline(AbstractPipeline):
             match = re.search(search_pattern, line)
             # Ignoring magic methods
             if match and (exec_name := match.group(match.lastindex)) and not exec_name.startswith("__"):
-                executables.append(exec_name)
+                executables.append(exec_name.strip())
         return executables
 
     # Todo: correct naming
     def _count_usages(self):
-        generate_pattern = "".join([rf"(?!.*\b{keyword}\s+{{0}}\b)" for keyword in ("class", "def")])
-        finall_pattern = rf"^({generate_pattern}).*\b({{0}})\b(?!\-).*$"
+        generate_pattern = "".join([fr"(?!.*\b{keyword}\s+{{0}}\b)" for keyword in ("class", "def")])
+        finall_pattern = fr"^({generate_pattern}).*\b({{0}})\b(?!\-).*$"
 
         search_patterns = []
         for executable in self.context.callable_list:

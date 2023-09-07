@@ -1,11 +1,11 @@
 # Definition
-class Executable:
+class Executable:  # executive collected
     pass
 
 # Positive
 class_ AnotherClass(Executable):
 test_class = Executable
-class AnotherClass(Executable):
+class AnotherClass(Executable):  # executive collected
 c.Executable()
 bsds():v.Executable
 bsds():v.Executable(asd, asd)
