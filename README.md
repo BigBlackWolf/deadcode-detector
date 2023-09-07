@@ -1,4 +1,4 @@
-# Dead Code Detector
+# True Detector
 
 A tool designed to identify unused code.
 
@@ -6,7 +6,7 @@ A tool designed to identify unused code.
 
 Clone repository
 ```shell script
-git clone https://github.com/BigBlackWolf/deadcode-detector.git
+git clone https://github.com/BigBlackWolf/true-detector.git
 cd deadcode-detector
 ```
 
@@ -18,5 +18,5 @@ source venv/bin/activate
 
 Run the command against needed directory
 ```shell script
-python src/main.py
+python src/true-detector/main.py
 ```

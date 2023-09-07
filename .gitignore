@@ -5,4 +5,6 @@ venv/
 .idea
 .coverage
 coverage/
+dist/
+*.egg-info/
 __pycache__
