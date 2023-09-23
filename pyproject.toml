@@ -6,8 +6,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "true_detector"
-version = "0.0.1"
+name = "true-detector"
+version = "0.0.2"
 authors = [
   { name="Stepan Rasputnyi", email="rasputny.stepan@gmail.com" },
 ]
