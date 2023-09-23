@@ -1,6 +1,5 @@
 """TODOs:
 - Cover with tests
-- Add threading for paralell calculations
 - Add progress bar
 - Improve variable storage lists
 - Store results in csv report
@@ -14,11 +13,12 @@ import os
 import pathlib
 import re
 import typing
+from concurrent import futures
 
 import click
 
-from .abstract import AbstractPipeline
-from .utils import Attributes, CallableListParamType
+from abstract import AbstractPipeline
+from utils import Attributes, CallableListParamType
 
 
 class PythonPipeline(AbstractPipeline):
@@ -29,13 +29,14 @@ class PythonPipeline(AbstractPipeline):
     def process(self):
         self._collect_input()
         self._collect_files()
-        self._collect_executable_names()
-        self._count_usages()
+        with futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+            self._collect_executable_names(executor)
+            self._count_usages(executor)
         self._save_results()
 
     def report(self):
-        result = len(set(self.context.callable_list) - set(self.context.found_callable_usage))
-        print(f"Found {result} unused callable objects")
+        result = set(self.context.callable_list) - set(self.context.found_callable_usage)
+        print(f"Found {len(result)} unused callable objects")
 
     def _collect_input(self):
         self.context.path = click.prompt(
@@ -68,27 +69,31 @@ class PythonPipeline(AbstractPipeline):
     def _filter_files_by_ext(files: list[str], root: str, extension: str = ".py") -> list[str]:
         return ["".join((root, "/", file)) for file in files if file.endswith(extension)]
 
-    def _collect_executable_names(self):
+    def _collect_executable_names(self, executor):
         generate_pattern = "|".join([fr"(([\s]+)?{keyword}\ )" for keyword in ("class", "def")])
         search_pattern = fr"^({generate_pattern})(.*?(?=\())"
 
+        results = []
         for file_path in self.context.files:
-            with open(file_path, "r") as file:
-                executables = self._search_executables(file, search_pattern)
-                self.context.callable_list.extend(executables)
+            future = executor.submit(self._search_executables, file_path, search_pattern)
+            results.append(future)
+
+        for result in futures.as_completed(results):
+            self.context.callable_list.extend(result.result())
 
     @staticmethod
-    def _search_executables(file: io.TextIOWrapper, search_pattern: list[str]) -> list[str]:
+    def _search_executables(file_path: str, search_pattern: str) -> list[str]:
         executables = []
-        for line in file:
-            match = re.search(search_pattern, line)
-            # Ignoring magic methods
-            if match and (exec_name := match.group(match.lastindex)) and not exec_name.startswith("__"):
-                executables.append(exec_name.strip())
+        with open(file_path, "r") as file:
+            for line in file:
+                match = re.search(search_pattern, line)
+                # Ignoring magic methods
+                if match and (exec_name := match.group(match.lastindex)) and not exec_name.startswith("__"):
+                    executables.append(exec_name.strip())
         return executables
 
     # Todo: correct naming
-    def _count_usages(self):
+    def _count_usages(self, executor):
         generate_pattern = "".join([fr"(?!.*\b{keyword}\s+{{0}}\b)" for keyword in ("class", "def")])
         finall_pattern = fr"^({generate_pattern}).*\b({{0}})\b(?!\-).*$"
 
@@ -98,15 +103,15 @@ class PythonPipeline(AbstractPipeline):
             search_patterns.append(pattern)
 
         for file_path in self.context.files:
-            with open(file_path, "r") as file:
-                self._find_substring(file, search_patterns)
+            executor.submit(self._find_substring, file_path, search_patterns)
 
-    def _find_substring(self, file: io.TextIOWrapper, search_patterns: list[str]):
-        for line in file:
+    def _find_substring(self, file_path: str, search_patterns: list[str]):
+        with open(file_path, "r") as file:
+            content = file.read()
             for pattern in search_patterns:
                 if pattern in self.context.exclude_pattern:
                     continue
-                match = re.search(pattern, line)
+                match = re.search(pattern, content)
                 if match and (exec_name := match.group(match.lastindex)):
                     self.context.exclude_pattern.append(pattern)
                     self.context.found_callable_usage.append(exec_name)

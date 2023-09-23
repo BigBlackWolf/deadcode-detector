@@ -3,29 +3,29 @@ import abc
 
 class AbstractPipeline(abc.ABC):
     @abc.abstractmethod
-    def process():
+    def process(self):
         ...
 
     @abc.abstractmethod
-    def report():
+    def report(self):
         ...
 
     @abc.abstractmethod
-    def _collect_input():
+    def _collect_input(self):
         ...
 
     @abc.abstractmethod
-    def _collect_files():
+    def _collect_files(self):
         ...
 
-    @abc.abstractclassmethod
-    def _search_executables():
-        ...
-
-    @abc.abstractmethod
-    def _collect_executable_names():
+    @abc.abstractstaticmethod
+    def _search_executables(*args):
         ...
 
     @abc.abstractmethod
-    def _count_usages():
+    def _collect_executable_names(self):
+        ...
+
+    @abc.abstractmethod
+    def _count_usages(self):
         ...
