@@ -1,5 +1,12 @@
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "wheel",
+]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "true-detector"
+name = "true_detector"
 version = "0.0.1"
 authors = [
   { name="Stepan Rasputnyi", email="rasputny.stepan@gmail.com" },
@@ -12,14 +19,13 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "License :: OSI Approved :: MIT License",
 ]
+dependencies = [
+  "click>=8.0.0",
+]
+
+[project.scripts]
+true-detector = "true_detector:main"
 
 [project.urls]
 "Homepage" = "https://github.com/BigBlackWolf/true-detector"
 "Bug Tracker" = "https://github.com/BigBlackWolf/true-detector/issues"
-
-[build-system]
-requires = [
-    "setuptools>=61.0",
-    "wheel",
-]
-build-backend = "setuptools.build_meta"

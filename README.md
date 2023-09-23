@@ -4,6 +4,18 @@ A tool designed to identify unused code.
 
 # Quick start
 
+Install with pip
+```shell script
+pip install true-detector
+```
+
+Run the script
+```shell script
+true-detector
+```
+
+# Manual setup
+
 Clone repository
 ```shell script
 git clone https://github.com/BigBlackWolf/true-detector.git

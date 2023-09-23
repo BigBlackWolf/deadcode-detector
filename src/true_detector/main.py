@@ -17,8 +17,8 @@ from concurrent import futures
 
 import click
 
-from abstract import AbstractPipeline
-from utils import Attributes, CallableListParamType
+from true_detector.abstract import AbstractPipeline
+from true_detector.utils import Attributes, CallableListParamType
 
 
 class PythonPipeline(AbstractPipeline):
