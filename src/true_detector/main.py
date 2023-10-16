@@ -1,6 +1,7 @@
 """TODOs:
+- Migrate to using ast
 - Cover with tests
-- Add progress bar
+
 - Improve variable storage lists
 - Store results in csv report
 - Make arguments functionall and be available to influence execution

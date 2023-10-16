@@ -11,6 +11,7 @@ class Attributes:
     callable_list: typing.Optional[list[str]] = field(default_factory=list)
     ignore_paths: typing.Optional[list[str]] = field(default_factory=list)
     files: list[str] = field(default_factory=list)
+    modules: list[str] = field(default_factory=list)
     found_callable_usage: typing.Optional[list[str]] = field(default_factory=list)
     exclude_pattern: typing.Optional[list[str]] = field(default_factory=list)
 
