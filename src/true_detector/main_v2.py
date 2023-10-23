@@ -65,33 +65,24 @@ class PythonPipeline(AbstractPipeline):
             )
 
     def _collect_files(self):
-        files_tree = []
-        modules_tree = []
         for root, _, files in os.walk(self.context.path):
             # Ignore hidden folders
             if (nodes := root.split("/")) and (
                 set(nodes) & set(self.context.ignore_paths) or nodes[-1].startswith((".", "__"))
             ):
                 continue
-            file_paths, modules = self._filter_files_by_ext(files, root)
-            files_tree.extend(file_paths)
-            modules_tree.extend(modules)
-        self.context.files = files_tree
-        self.context.modules = modules_tree
+            file_paths = self._filter_files_by_ext(files, root)
+            self.context.files.update(file_paths)
 
     @staticmethod
-    def _filter_files_by_ext(files: list[str], root: str, extension: str = ".py") -> tuple[list[str], list[str]]:
-        file_paths = []
-        modules = []
+    def _filter_files_by_ext(files: list[str], root: str, extension: str = ".py") -> dict[str, str]:
+        file_paths = {}
         for file in files:
             if file.endswith(extension):
                 file_path = "/".join((root, file))
-                file_paths.append(file_path)
-
-                file = file.split(extension)[0]
-                module = ".".join((root, file))
-                modules.append(module)
-        return file_paths, modules
+                module = root.replace("/", ".") + "." + file[:-len(extension)]
+                file_paths[file_path] = module
+        return file_paths
 
         return ["".join((root, "/", file)) for file in files if file.endswith(extension)]
 
@@ -103,8 +94,7 @@ class PythonPipeline(AbstractPipeline):
                 to_analyze[file_path] = self._search_executables(file_path)
         return to_analyze
 
-    @staticmethod
-    def _search_executables(file_path: str) -> dict[str, list | dict]:
+    def _search_executables(self, file_path: str) -> dict[str, list | dict]:
         with open(file_path, "r") as file:
             code = file.read()
             try:
@@ -113,14 +103,17 @@ class PythonPipeline(AbstractPipeline):
                 return {}
         visitor = Visitor()
         visitor.visit(tree)
-        data = visitor.report()
+        module = self.context.files[file_path]
+        data = visitor.report(module)
         return data
     
     def _count_usages(self, analyze):
-        callables = {}
+        callables = set()
+        calls = set()
         for file, data in analyze.items():
-            callables[file] = data.get("callables", set())
-        return callables
+            callables.update(data.get("callables", set()))
+            calls.update(data.get("calls", set()))
+        return callables, calls
 
     def _save_results(self, results):
         print(f"Unused callables: {results}")

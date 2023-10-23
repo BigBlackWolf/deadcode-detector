@@ -70,8 +70,14 @@ class Visitor(ast.NodeVisitor):
             func = func.value
         modules.append(func.id)
         return ".".join(modules[::-1])
+    
+    def _format_callables(self, module: str):
+        new_callable = set()
+        for _callable in self.callables:
+            new_callable.add(f"{module}.{_callable}")
+        self.callables = new_callable
         
-    def report(self):
+    def report(self, module) -> dict[str, set]:
         used = set()
         extend = set()
         for _call in self.calls:
@@ -89,4 +95,6 @@ class Visitor(ast.NodeVisitor):
                 extend.add(unaliased)
         self.calls -= used
         self.calls |= extend
+
+        self._format_callables(module)
         return {"calls": self.calls, "callables": self.callables}
