@@ -42,8 +42,8 @@ class PythonPipeline(AbstractPipeline):
         self._collect_input()
         self._collect_files()
         analyze = self._collect_executable_names()
-        self._count_usages(analyze)
-        self._save_results()
+        results = self._count_usages(analyze)
+        self._save_results(results)
 
     def report(self):
         result = set(self.context.callable_list) - set(self.context.found_callable_usage)
@@ -117,11 +117,13 @@ class PythonPipeline(AbstractPipeline):
         return data
     
     def _count_usages(self, analyze):
-        for file in analyze:
-            print(file, analyze[file])
+        callables = {}
+        for file, data in analyze.items():
+            callables[file] = data.get("callables", set())
+        return callables
 
-    def _save_results(self):
-        pass
+    def _save_results(self, results):
+        print(f"Unused callables: {results}")
 
 
 @click.command()

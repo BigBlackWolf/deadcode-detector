@@ -3,32 +3,37 @@ import ast
 
 class Visitor(ast.NodeVisitor):
     def __init__(self):
-        self.stats = {"class_methods": {}, "callables": set(), "calls": set(), "assignments": {}}
+        self.assignments = {}
+        self.callables = set()
+        self.calls = set()
+        self.class_methods = {}
+        self.imports = set()
+        self.import_alliases = {}
 
     def visit_ClassDef(self, node):
         class_name = node.name
-        self.stats["callables"].add(class_name)
+        self.callables.add(class_name)
 
         for attribute in node.body:
             if isinstance(attribute, ast.Assign):
                 pass  # TODO: add handler
             elif isinstance(attribute, ast.FunctionDef):
-                self.stats["callables"].add(".".join([class_name, attribute.name]))
-                self.stats["class_methods"][attribute.name] = attribute.lineno
+                self.callables.add(".".join([class_name, attribute.name]))
+                self.class_methods[attribute.name] = attribute.lineno
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
-        class_method = self.stats["class_methods"].get(node.name, None)
+        class_method = self.class_methods.get(node.name, None)
         if not class_method or class_method != node.lineno:
-            self.stats["callables"].add(node.name)
+            self.callables.add(node.name)
         self.generic_visit(node)
 
     def visit_Call(self, node):
         if hasattr(node.func, "id"):
-            self.stats["calls"].add(node.func.id)
+            self.calls.add(node.func.id)
         else:
             _call = self._create_callable_path(node.func)
-            self.stats["calls"].add(_call)
+            self.calls.add(_call)
         self.generic_visit(node)
     
     def visit_Assign(self, node):
@@ -37,11 +42,25 @@ class Visitor(ast.NodeVisitor):
             self.generic_visit(node)
             return
         _call = self._create_callable_path(node.value.func)
-        if _call in self.stats["assignments"]:
-            self.stats["assignments"][_call].extend(targets)
+        if _call in self.assignments:
+            self.assignments[_call].extend(targets)
         else:
-            self.stats["assignments"][_call] = targets
+            self.assignments[_call] = targets
         self.generic_visit(node)
+    
+    def visit_Import(self, node):
+        for _name in node.names:
+            self.imports.add(_name.name)
+            if _name.asname:
+                self.import_alliases[_name.asname] = _name.name
+    
+    def visit_ImportFrom(self, node):
+        module = node.module
+        for _name in node.names:
+            import_name = f"{module}.{_name.name}"
+            self.imports.add(import_name)
+            if _name.asname:
+                self.import_alliases[_name.asname] = import_name
     
     @classmethod
     def _create_callable_path(cls, func: ast.Attribute | ast.Name) -> str:
@@ -54,15 +73,20 @@ class Visitor(ast.NodeVisitor):
         
     def report(self):
         used = set()
-        for _call in self.stats["calls"]:
-            if _call in self.stats["callables"]:
-                self.stats["callables"].remove(_call)
+        extend = set()
+        for _call in self.calls:
+            if _call in self.callables:
+                self.callables.remove(_call)
                 used.add(_call)
-            # Built-in, import calls and assignments
-            # TODO: fix for assignments and imports
-            elif _call.split(".")[0] == _call:
+            # Built-in and assignments
+            # TODO: fix for assignments
+            first_part = _call.split(".")[0]
+            if first_part == _call and first_part not in self.imports:
                 used.add(_call)
-        self.stats["calls"] -= used
-        self.stats.pop("class_methods")
-        self.stats.pop("assignments")
-        return self.stats
+            elif first_part in self.import_alliases:
+                used.add(_call)
+                unaliased = _call.replace(first_part, self.import_alliases[first_part])
+                extend.add(unaliased)
+        self.calls -= used
+        self.calls |= extend
+        return {"calls": self.calls, "callables": self.callables}
